@@ -3,11 +3,15 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import PrivyProvider from '@/lib/auth/PrivyProvider';
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: "OGP Core",
-  description: "Open Grid Protocol - Node Management Dashboard",
+  title: "OGP Core - Node Management Dashboard",
+  description: "Open Grid Protocol - Register, monitor, and manage your OGP nodes",
 };
 
 export default function RootLayout({
@@ -16,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="light">
+    <html lang="en" className="scroll-smooth">
       <head>
         <link
           rel="stylesheet"
@@ -25,7 +29,7 @@ export default function RootLayout({
           crossOrigin=""
         />
       </head>
-      <body className={`${inter.variable} font-sans`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <PrivyProvider>
           {children}
         </PrivyProvider>

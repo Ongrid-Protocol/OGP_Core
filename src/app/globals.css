@@ -3,27 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 248, 250, 252;
-  --background-end-rgb: 255, 255, 255;
+  --foreground-rgb: 30, 30, 30;
+  --background-rgb: 250, 250, 250;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 10, 15, 30;
-    --background-end-rgb: 20, 30, 50;
+    --foreground-rgb: 250, 250, 250;
+    --background-rgb: 20, 20, 30;
   }
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background-color: rgb(var(--background-rgb));
+  font-feature-settings: "ss01", "ss03";
 }
 
 /* Leaflet map container styles */
@@ -51,13 +45,12 @@ body {
 }
 
 .card-hover {
-  transition-property: box-shadow;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 300ms;
+  transition: all 0.2s ease;
 }
 
 .card-hover:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
 }
 
 /* Define pulse animation */
@@ -68,4 +61,33 @@ body {
   50% {
     opacity: 0.5;
   }
+}
+
+/* AYDO-inspired UI components */
+.aydo-container {
+  @apply max-w-6xl mx-auto px-4 sm:px-6;
+}
+
+.aydo-title {
+  @apply text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
+}
+
+.aydo-card {
+  @apply bg-card rounded-2xl shadow-aydo p-6 transition-all hover:shadow-lg;
+}
+
+.aydo-button {
+  @apply bg-primary text-white font-medium px-5 py-3 rounded-lg hover:bg-primary-dark transition-colors;
+}
+
+.aydo-button-secondary {
+  @apply bg-white border border-gray-200 text-gray-700 font-medium px-5 py-3 rounded-lg hover:border-gray-300 transition-colors;
+}
+
+.aydo-stat {
+  @apply flex flex-col p-5 rounded-2xl bg-card shadow-aydo;
+}
+
+.aydo-circle-icon {
+  @apply p-3 rounded-full flex items-center justify-center;
 }

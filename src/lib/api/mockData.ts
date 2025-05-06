@@ -1,4 +1,5 @@
-import { NodeData } from '../types';
+import { NodeData, DeviceCounters, CountryInfo } from '@/lib/types';
+
 
 // Wallet addresses for permissioned access (these would typically come from a database or API)
 export const authorizedWallets = [
@@ -8,90 +9,128 @@ export const authorizedWallets = [
   '0xaDdb303C89c84cDC484AF0fE4701f330ca01aFD6' // User's wallet address
 ];
 
-// Mock nodes data for development
+
+// List of available countries with their regions
+export const countries: CountryInfo[] = [
+  { code: 'KE', name: 'Kenya', region: 'Africa' },
+  { code: 'ZA', name: 'South Africa', region: 'Africa' },
+  { code: 'NG', name: 'Nigeria', region: 'Africa' },
+  { code: 'EG', name: 'Egypt', region: 'Africa' },
+  { code: 'GH', name: 'Ghana', region: 'Africa' },
+  { code: 'IN', name: 'India', region: 'Asia' },
+  { code: 'CN', name: 'China', region: 'Asia' },
+  { code: 'JP', name: 'Japan', region: 'Asia' },
+  { code: 'SG', name: 'Singapore', region: 'Asia' },
+  { code: 'AE', name: 'United Arab Emirates', region: 'Asia' },
+  { code: 'US', name: 'United States', region: 'North America' },
+  { code: 'CA', name: 'Canada', region: 'North America' },
+  { code: 'MX', name: 'Mexico', region: 'North America' },
+  { code: 'BR', name: 'Brazil', region: 'South America' },
+  { code: 'AR', name: 'Argentina', region: 'South America' },
+  { code: 'GB', name: 'United Kingdom', region: 'Europe' },
+  { code: 'DE', name: 'Germany', region: 'Europe' },
+  { code: 'FR', name: 'France', region: 'Europe' },
+  { code: 'IT', name: 'Italy', region: 'Europe' },
+  { code: 'ES', name: 'Spain', region: 'Europe' },
+  { code: 'AU', name: 'Australia', region: 'Oceania' },
+  { code: 'NZ', name: 'New Zealand', region: 'Oceania' }
+];
+
+// Current counts of devices by type and country - for ID generation
+export const deviceCounters: DeviceCounters = {
+  'generator': {
+    'KE': 4, 'NG': 2, 'ZA': 3, 'EG': 1, 'GH': 1,
+    'IN': 2, 'CN': 3, 'JP': 1, 'SG': 2, 'AE': 1,
+    'US': 5, 'CA': 2, 'MX': 1, 'BR': 2, 'AR': 1,
+    'GB': 3, 'DE': 2, 'FR': 2, 'IT': 1, 'ES': 1,
+    'AU': 2, 'NZ': 1
+  },
+  'consumer': {
+    'KE': 3, 'NG': 1, 'ZA': 2, 'EG': 1, 'GH': 0,
+    'IN': 3, 'CN': 2, 'JP': 2, 'SG': 1, 'AE': 1,
+    'US': 4, 'CA': 1, 'MX': 1, 'BR': 1, 'AR': 0,
+    'GB': 2, 'DE': 3, 'FR': 1, 'IT': 2, 'ES': 1,
+    'AU': 1, 'NZ': 1
+  }
+};
+
+// Mock location counts by country - for ID generation
+export const locationCounters: Record<string, number> = {
+  'KE': 2, 'NG': 2, 'ZA': 2, 'EG': 1, 'GH': 1,
+  'IN': 3, 'CN': 3, 'JP': 2, 'SG': 1, 'AE': 1,
+  'US': 5, 'CA': 3, 'MX': 2, 'BR': 2, 'AR': 1,
+  'GB': 2, 'DE': 3, 'FR': 2, 'IT': 2, 'ES': 1,
+  'AU': 2, 'NZ': 1
+};
+
+// Mock nodes for dashboard
 export const mockNodes: NodeData[] = [
   {
-    id: "SG1004KE04",
-    name: "Solar Generator 004",
-    location: { lat: -4.0435, lng: 39.6682 },
-    status: "active",
+    id: 'SG1001KE01',
+    name: 'Solar Generator 001',
+    status: 'active',
+    type: 'Solar Generator',
+    peerId: '12D3KooWDGYVsHj3H2qa6KjJVGCTPaKUS2YS9Urjuwo2mcRWbhAr',
+    ipAddress: '41.204.190.12',
+    location: {
+      lat: -1.2921,
+      lng: 36.8219,
+      country: 'KE',
+      region: 'Africa'
+    },
     lastSeen: new Date().toISOString(),
-    ip: "192.168.1.102",
-    port: 3000,
-    peerId: "12D3KooWR5Q8UGPwEp6EBh8G5aDfHNHcNfXhX2kKgGPgBVUPrn3F",
-    walletAddress: "0x123456789abcdef123456789abcdef123456789a",
-    cpu: 32,
-    memory: 45,
-    uptime: 842400 // 9.75 days in seconds
+    uptime: 99.8,
+    version: '1.2.0'
   },
   {
-    id: "SGC1003KE03",
-    name: "Solar Generator and Consumer 003",
-    location: { lat: -1.3031, lng: 36.8262 },
-    status: "active",
+    id: 'SC1001US01',
+    name: 'Solar Consumer 001',
+    status: 'active',
+    type: 'Solar Consumer',
+    peerId: '12D3KooWJ2Fsh4VTYNmFFCFbFbW9VyZkHbDBbPTpgTK6QEgJkiMd',
+    ipAddress: '104.28.31.85',
+    location: {
+      lat: 37.7749,
+      lng: -122.4194,
+      country: 'US',
+      region: 'North America'
+    },
     lastSeen: new Date().toISOString(),
-    ip: "192.168.1.101",
-    port: 3000,
-    peerId: "12D3KooWBx5p7xCCxNUDTL2BFmCrmW7n3jVNyQmahTaE2YhrqFqF",
-    walletAddress: "0x123456789abcdef123456789abcdef123456789a",
-    cpu: 12,
-    memory: 32,
-    uptime: 1209600 // 14 days in seconds
+    uptime: 99.5,
+    version: '1.2.0'
   },
   {
-    id: "SG1001US01",
-    name: "Solar Generator 001",
-    location: { lat: 40.7128, lng: -74.0060 },
-    status: "inactive",
-    lastSeen: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    ip: "192.168.1.100",
-    port: 3000,
-    peerId: "12D3KooWA1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z",
-    walletAddress: "0xabcdef123456789abcdef123456789abcdef1234",
-    cpu: 0,
-    memory: 0,
-    uptime: 259200 // 3 days in seconds
+    id: 'SG1002ZA01',
+    name: 'Solar Generator 002',
+    status: 'inactive',
+    type: 'Solar Generator',
+    peerId: '12D3KooWBQbGbVPXKdvh9mhYEhCBXAq3TFdvgGJQsTTYgBHjp5yr',
+    ipAddress: '196.20.168.8',
+    location: {
+      lat: -33.9249,
+      lng: 18.4241,
+      country: 'ZA',
+      region: 'Africa'
+    },
+    lastSeen: new Date(Date.now() - 86400000).toISOString(),
+    uptime: 87.3,
+    version: '1.1.0'
   },
   {
-    id: "WG2001IN01",
-    name: "Wind Generator 001",
-    location: { lat: 19.0760, lng: 72.8777 },
-    status: "warning",
-    lastSeen: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-    ip: "192.168.1.103",
-    port: 3000,
-    peerId: "12D3KooWQjKLR7cafcVTJYrmQHXR2z1LLYVoAfm7hk2BBtLUvM9V",
-    walletAddress: "0x9876543210abcdef9876543210abcdef98765432",
-    cpu: 89,
-    memory: 92,
-    uptime: 432000 // 5 days in seconds
-  },
-  {
-    id: "SC2002JP01",
-    name: "Solar Consumer 002",
-    location: { lat: 35.6762, lng: 139.6503 },
-    status: "active",
+    id: 'SC1002IN01',
+    name: 'Solar Consumer 002',
+    status: 'active',
+    type: 'Solar Consumer',
+    peerId: '12D3KooWHrMjXXarJD7jEJxMQJ7xkLD7CFqEhPpVvPXJb3PH82LK',
+    ipAddress: '103.6.184.5',
+    location: {
+      lat: 19.0760,
+      lng: 72.8777,
+      country: 'IN',
+      region: 'Asia'
+    },
     lastSeen: new Date().toISOString(),
-    ip: "192.168.1.104",
-    port: 3000,
-    peerId: "12D3KooWZvEGZL2arY47RMK5TZ6QqzTSuiQVDNubNeTwh3YLxEAK",
-    walletAddress: "0x123456789abcdef123456789abcdef123456789a",
-    cpu: 18,
-    memory: 24,
-    uptime: 604800 // 7 days in seconds
-  },
-  {
-    id: "BG3001UK01",
-    name: "Battery Storage Node 001",
-    location: { lat: 51.5074, lng: -0.1278 },
-    status: "active",
-    lastSeen: new Date().toISOString(),
-    ip: "192.168.1.105",
-    port: 3000,
-    peerId: "12D3KooWJN1EmVJv83xZQbGYTSjWdtgELv7CQ16pPHuEGhGZqbE8",
-    walletAddress: "0xaDdb303C89c84cDC484AF0fE4701f330ca01aFD6",
-    cpu: 22,
-    memory: 36,
-    uptime: 518400 // 6 days in seconds
+    uptime: 99.9,
+    version: '1.2.0'
   }
 ]; 

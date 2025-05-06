@@ -8,14 +8,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#3B82F6',
-        'primary-dark': '#2563EB',
-        secondary: '#10B981',
-        accent: '#F59E0B',
-        danger: '#EF4444',
+        primary: '#0047ff', // AYDO primary blue
+        'primary-dark': '#0035cc',
+        secondary: '#4d4dff', // Secondary purple/blue
+        accent: '#14b8a6', // Teal accent
+        danger: '#ef4444',
+        background: '#fafafa',
+        card: '#ffffff',
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'sans-serif'],
+      },
+      boxShadow: {
+        'aydo': '0 4px 20px rgba(0, 0, 0, 0.05)',
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },
     },
   },
