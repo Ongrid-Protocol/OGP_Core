@@ -75,7 +75,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               onClick={() => logout()}
               className="flex items-center w-full px-4 py-3 mt-8 text-sm rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors"
             >
-              <FiLogOut className="w-5 h-5 mr-3 text-gray-400" />
+              <FiLogOut className="w-5 h-5 mr-3 text-red-400" />
               Disconnect
             </button>
           )}

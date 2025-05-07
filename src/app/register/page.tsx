@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { FiMapPin, FiServer, FiSettings, FiArrowRight, FiClock, FiInfo, FiGlobe, FiCpu, FiUser, FiWifi, FiCheckCircle, FiCopy } from 'react-icons/fi';
+import { FiMapPin, FiServer, FiSettings, FiArrowRight, FiClock, FiInfo, FiGlobe, FiCpu, FiUser, FiWifi, FiCheckCircle, FiCopy, FiDownload, FiRefreshCw } from 'react-icons/fi';
 import Link from 'next/link';
 import { countries, deviceCounters, locationCounters } from '@/lib/api/mockData';
 import { NodeRegistrationData, SolarSetupType } from '@/lib/types';
 import { generateNodeName, generateDeviceId } from '@/lib/utils/nameGenerator';
-import { generateOtpCode } from '@/lib/api/canister';
+import { generateOtpCode, associateNodeDetails, verifyRegistrationStatus, getDevicesYaml } from '@/lib/api/canister';
 
 type DeviceType = 'Solar Generator' | 'Solar Consumer';
 
@@ -36,6 +36,10 @@ export default function RegisterNodePage() {
   const [nodeName, setNodeName] = useState<string>('');
   const [manualNameEntry, setManualNameEntry] = useState(false);
   const [otpCopied, setOtpCopied] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [devicesYaml, setDevicesYaml] = useState<string | null>(null);
+  const [verificationAttempts, setVerificationAttempts] = useState(0);
   
   // Initial form data
   const [formData, setFormData] = useState<Partial<NodeRegistrationData>>({
@@ -49,6 +53,10 @@ export default function RegisterNodePage() {
     location: {
       latitude: 0,
       longitude: 0,
+      altitude: 0,
+      accuracy: 5.0,
+      satellites: 8,
+      timestamp: Math.floor(Date.now() / 1000), // Current timestamp in seconds
       country: {
         code: '',
         name: '',
@@ -56,7 +64,7 @@ export default function RegisterNodePage() {
       }
     },
     specifications: {
-      max_daily_wattage: '1200kWh',
+      max_wattage: '1200kWh',
       voltage_range: '220V-240V',
       frequency_range: '50Hz',
       battery_capacity: '12kWh',
@@ -139,6 +147,23 @@ export default function RegisterNodePage() {
     if (name === 'deviceSetupType') {
       setDeviceSetupType(value as SolarSetupType);
     } else if (name === 'latitude' || name === 'longitude') {
+      // Always ensure latitude and longitude are stored as floats
+      // Add a decimal point if the value is an integer
+      let floatValue = parseFloat(value);
+      if (!isNaN(floatValue)) {
+        // If input is a whole number, add .0 to make it explicit float
+        if (Number.isInteger(floatValue)) {
+          floatValue = parseFloat(floatValue.toFixed(1));
+        }
+        setFormData(prev => ({
+          ...prev,
+          location: {
+            ...prev.location!,
+            [name]: floatValue
+          }
+        }));
+      }
+    } else if (name === 'altitude' || name === 'accuracy' || name === 'satellites') {
       setFormData(prev => ({
         ...prev,
         location: {
@@ -155,8 +180,17 @@ export default function RegisterNodePage() {
         ...prev,
         node_name: value
       }));
-    } else if (name === 'max_daily_wattage' || name === 'voltage_range' || name === 'frequency_range' || 
-               name === 'battery_capacity' || name === 'phase_type') {
+    } else if (name === 'max_wattage' || name === 'frequency_range' || name === 'battery_capacity') {
+      // Convert these fields to numbers
+      setFormData(prev => ({
+        ...prev,
+        specifications: {
+          ...prev.specifications!,
+          [name]: parseInt(value) || 0
+        }
+      }));
+    } else if (name === 'voltage_range' || name === 'phase_type') {
+      // Keep these as strings
       setFormData(prev => ({
         ...prev,
         specifications: {
@@ -221,7 +255,7 @@ export default function RegisterNodePage() {
         return false;
       }
     } else if (step === 3) {
-      if (!formData.specifications?.max_daily_wattage || !formData.specifications?.voltage_range ||
+      if (!formData.specifications?.max_wattage || !formData.specifications?.voltage_range ||
           !formData.specifications?.frequency_range || !formData.specifications?.battery_capacity) {
         setError('Please fill in all specification fields');
         return false;
@@ -268,6 +302,52 @@ export default function RegisterNodePage() {
     router.push('/nodes/pending');
   };
 
+  // New function to check registration status
+  const checkRegistrationStatus = async () => {
+    if (!otpCode || !formData.peer_id) return;
+    
+    setIsVerifying(true);
+    try {
+      const isRegistered = await verifyRegistrationStatus(otpCode, formData.peer_id);
+      
+      if (isRegistered) {
+        setIsVerified(true);
+        // Fetch devices.yaml content
+        const yamlContent = await getDevicesYaml();
+        setDevicesYaml(yamlContent);
+        setStep(7); // Move to final verified step
+      } else {
+        // Increment verification attempts
+        setVerificationAttempts(prev => prev + 1);
+        
+        // If we've tried too many times, show an error
+        if (verificationAttempts >= 10) {
+          setError("Node registration verification timed out. Please check your node's logs.");
+        }
+      }
+    } catch (error) {
+      console.error("Error verifying registration:", error);
+      setError("Failed to verify registration status. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Setup polling for registration verification
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (step === 6 && otpCode && formData.peer_id && !isVerified) {
+      interval = setInterval(() => {
+        checkRegistrationStatus();
+      }, 5000); // Check every 5 seconds
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [step, otpCode, formData.peer_id, isVerified, verificationAttempts]);
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,56 +359,68 @@ export default function RegisterNodePage() {
     setIsLoading(true);
     
     try {
-      // Register the node with the complete data
-      const result = await registerNode(formData as NodeRegistrationData);
+      // Generate OTP code for the peer ID
+      const otp = await generateOtpCode(formData.peer_id!);
+      setOtpCode(otp);
       
-      if (result.success) {
-        // Generate OTP code
-        const otp = await generateOtpCode(formData.peer_id!);
-        setOtpCode(otp);
-        
-        // Show the YAML output for the device
-        const yamlOutput = generateYamlOutput(formData as NodeRegistrationData);
-        setSuccess(`Node registered successfully!
-
-## devices.yaml
-${yamlOutput}`);
-        
-        // Set step to a new final step that shows the OTP
+      // Convert numbers to the exact types expected by the canister
+      const nodeDetails = {
+        id: String(formData.id || ''),
+        nodeName: String(formData.node_name || ''),
+        deviceType: String(formData.device_type || ''),
+        contractAddress: String(formData.contract_address || ''),
+        walletAddress: String(formData.wallet_address || ''),
+        // Convert to float64 (number in JavaScript)
+        latitude: Number(formData.location?.latitude || 6.5244),
+        longitude: Number(formData.location?.longitude || 3.3792),
+        altitude: Number(formData.location?.altitude || 0),
+        // Convert to float32 (number in JavaScript)
+        accuracy: Number(formData.location?.accuracy || 5.0),
+        // Convert to nat8 (number in JavaScript, will be converted to u8 in Rust)
+        satellites: Number(formData.location?.satellites || 8),
+        // Convert to nat64 (number in JavaScript, will be converted to u64 in Rust)
+        timestamp: Number(formData.location?.timestamp || Math.floor(Date.now() / 1000)),
+        countryCode: String(formData.location?.country?.code || ''),
+        countryName: String(formData.location?.country?.name || ''),
+        countryRegion: String(formData.location?.country?.region || ''),
+        // Convert specifications to proper number types
+        maxWattage: Number(formData.specifications?.max_wattage || 0),
+        voltageRange: String(formData.specifications?.voltage_range || ''),
+        frequencyRange: Number(formData.specifications?.frequency_range || 0),
+        batteryCapacity: Number(formData.specifications?.battery_capacity || 0),
+        phaseType: String(formData.specifications?.phase_type || '')
+      };
+      
+      // Associate the node details with the OTP
+      const associateSuccess = await associateNodeDetails(otp, nodeDetails);
+      
+      if (associateSuccess) {
+        // Show OTP and wait for verification
         setStep(6);
       } else {
-        setError('Failed to register node. Please try again.');
+        setError('Failed to associate node details with OTP. Please try again.');
       }
-    } catch (err) {
-      console.error('Error registering node:', err);
-      setError('An error occurred during registration. Please try again.');
+    } catch (err: any) {
+      console.error('Error during registration:', err);
+      setError(`An error occurred during registration: ${err.message || 'Please try again.'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Generate YAML output
-  const generateYamlOutput = (data: NodeRegistrationData): string => {
-    return `devices:
-  - id: ${data.id}
-    peer_id: ${data.peer_id}
-    node_name: ${data.node_name}
-    node_creation_number: ${data.node_creation_number}
-    device_type: ${data.device_type}
-    wallet_address: '${data.wallet_address}'
-    location:
-      latitude: ${data.location.latitude}
-      longitude: ${data.location.longitude}
-      country:
-        code: ${data.location.country.code}
-        name: ${data.location.country.name}
-        region: ${data.location.country.region}
-    specifications:
-      max_daily_wattage: ${data.specifications.max_daily_wattage}
-      voltage_range: ${data.specifications.voltage_range}
-      frequency_range: ${data.specifications.frequency_range}
-      battery_capacity: ${data.specifications.battery_capacity}
-      phase_type: ${data.specifications.phase_type}`;
+  // Download devices.yaml
+  const downloadDevicesYaml = () => {
+    if (!devicesYaml) return;
+    
+    const blob = new Blob([devicesYaml], { type: 'text/yaml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'devices.yaml';
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   };
 
   return (
@@ -583,6 +675,65 @@ ${yamlOutput}`);
                     </div>
                   </div>
                   
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label htmlFor="altitude" className="block text-sm font-medium text-gray-700 mb-1">
+                        Altitude (meters)
+                      </label>
+                      <div className="relative rounded-md">
+                        <input
+                          type="number"
+                          step="0.1"
+                          name="altitude"
+                          id="altitude"
+                          value={formData.location?.altitude ?? 0}
+                          onChange={handleInputChange}
+                          className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-gray-900"
+                          placeholder="e.g., 100.5"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="accuracy" className="block text-sm font-medium text-gray-700 mb-1">
+                        Accuracy (meters)
+                      </label>
+                      <div className="relative rounded-md">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          name="accuracy"
+                          id="accuracy"
+                          value={formData.location?.accuracy ?? 5.0}
+                          onChange={handleInputChange}
+                          className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-gray-900"
+                          placeholder="e.g., 5.0"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="satellites" className="block text-sm font-medium text-gray-700 mb-1">
+                        Satellites
+                      </label>
+                      <div className="relative rounded-md">
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="32"
+                          name="satellites"
+                          id="satellites"
+                          value={formData.location?.satellites ?? 8}
+                          onChange={handleInputChange}
+                          className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-gray-900"
+                          placeholder="e.g., 8"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
                   {formData.location?.country?.code && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-700 flex items-start">
                       <FiInfo className="h-5 w-5 mr-3 mt-0.5 flex-shrink-0" />
@@ -613,26 +764,30 @@ ${yamlOutput}`);
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="max_daily_wattage" className="block text-sm font-medium text-gray-700 mb-1">
-                        Max Daily Wattage *
+                      <label htmlFor="max_wattage" className="block text-sm font-medium text-gray-700 mb-1">
+                        Max Wattage (W) *
                       </label>
                       <div className="relative rounded-md">
                         <input
-                          type="text"
-                          name="max_daily_wattage"
-                          id="max_daily_wattage"
-                          value={formData.specifications?.max_daily_wattage}
+                          type="number"
+                          name="max_wattage"
+                          id="max_wattage"
+                          value={formData.specifications?.max_wattage}
                           onChange={handleInputChange}
                           className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-gray-900"
-                          placeholder="e.g., 1200kWh"
+                          placeholder="e.g., 1200"
+                          min="0"
                           required
                         />
                       </div>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Maximum power output in watts
+                      </p>
                     </div>
                     
                     <div>
                       <label htmlFor="voltage_range" className="block text-sm font-medium text-gray-700 mb-1">
-                        Voltage Range *
+                        Voltage Range (V) *
                       </label>
                       <div className="relative rounded-md">
                         <input
@@ -642,48 +797,59 @@ ${yamlOutput}`);
                           value={formData.specifications?.voltage_range}
                           onChange={handleInputChange}
                           className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-gray-900"
-                          placeholder="e.g., 220V-240V"
+                          placeholder="e.g., 220-240"
                           required
                         />
                       </div>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Acceptable voltage range in volts
+                      </p>
                     </div>
                   </div>
   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="frequency_range" className="block text-sm font-medium text-gray-700 mb-1">
-                        Frequency Range *
+                        Frequency (Hz) *
                       </label>
                       <div className="relative rounded-md">
                         <input
-                          type="text"
+                          type="number"
                           name="frequency_range"
                           id="frequency_range"
                           value={formData.specifications?.frequency_range}
                           onChange={handleInputChange}
                           className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-gray-900"
-                          placeholder="e.g., 50Hz"
+                          placeholder="e.g., 50"
+                          min="0"
                           required
                         />
                       </div>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Operating frequency in hertz
+                      </p>
                     </div>
                     
                     <div>
                       <label htmlFor="battery_capacity" className="block text-sm font-medium text-gray-700 mb-1">
-                        Battery Capacity *
+                        Battery Capacity (Ah) *
                       </label>
                       <div className="relative rounded-md">
                         <input
-                          type="text"
+                          type="number"
                           name="battery_capacity"
                           id="battery_capacity"
                           value={formData.specifications?.battery_capacity}
                           onChange={handleInputChange}
                           className="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-gray-900"
-                          placeholder="e.g., 12kWh"
+                          placeholder="e.g., 100"
+                          min="0"
                           required
                         />
                       </div>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Battery capacity in ampere-hours
+                      </p>
                     </div>
                   </div>
   
@@ -704,6 +870,9 @@ ${yamlOutput}`);
                         <option value="three">Three Phase</option>
                       </select>
                     </div>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Type of electrical phase configuration
+                    </p>
                   </div>
                 </div>
               )}
@@ -784,8 +953,8 @@ ${yamlOutput}`);
                         </div>
                       </div>
                       
-                      <div className="font-medium">Max Daily Wattage:</div>
-                      <div>{formData.specifications?.max_daily_wattage}</div>
+                      <div className="font-medium">Max Wattage:</div>
+                      <div>{formData.specifications?.max_wattage}</div>
                       
                       <div className="font-medium">Voltage Range:</div>
                       <div>{formData.specifications?.voltage_range}</div>
@@ -862,16 +1031,16 @@ ${yamlOutput}`);
             </form>
           )}
           
-          {/* Step 6: OTP and YAML Output */}
+          {/* Step 6: OTP Generation and Waiting for Verification */}
           {step === 6 && (
             <div className="space-y-8">
               <div className="flex items-center justify-center">
-                <div className="bg-green-50 w-16 h-16 rounded-full flex items-center justify-center">
-                  <FiCheckCircle className="w-8 h-8 text-green-500" />
+                <div className="bg-yellow-50 w-16 h-16 rounded-full flex items-center justify-center">
+                  <FiClock className="w-8 h-8 text-yellow-500" />
                 </div>
               </div>
               
-              <h2 className="text-2xl font-bold text-center text-gray-900">Node Registration Complete</h2>
+              <h2 className="text-2xl font-bold text-center text-gray-900">Node Registration Pending</h2>
               
               {/* OTP Section */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
@@ -898,23 +1067,159 @@ ${yamlOutput}`);
                 </div>
               </div>
               
-              {/* YAML Output */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h3 className="text-lg font-semibold mb-2">Generated YAML Configuration</h3>
-                <pre className="whitespace-pre-wrap text-sm font-mono overflow-auto max-h-80 bg-gray-900 text-gray-100 p-4 rounded-md">
-                  {success && success.trim()}
-                </pre>
+              {/* Verification Status */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">Verification Status</h3>
+                
+                <div className="flex items-center justify-center mb-4">
+                  {isVerifying ? (
+                    <div className="animate-spin h-8 w-8 text-primary">
+                      <FiRefreshCw className="w-full h-full" />
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-100 text-yellow-800 rounded-full p-2">
+                      <FiClock className="w-6 h-6" />
+                    </div>
+                  )}
+                </div>
+                
+                <p className="text-center mb-4">
+                  {isVerifying 
+                    ? "Checking registration status..." 
+                    : "Waiting for node to use OTP and register with the network."}
+                </p>
+                
+                <p className="text-sm text-gray-600 text-center">
+                  Attempts: {verificationAttempts} {verificationAttempts > 5 && "(This may take a few minutes)"}
+                </p>
+                
+                <div className="mt-6">
+                  <ol className="text-sm space-y-3">
+                    <li className="flex items-start">
+                      <span className="inline-flex items-center justify-center w-6 h-6 mr-2 rounded-full bg-blue-100 text-blue-800">1</span>
+                      <span>Copy the OTP shown above</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="inline-flex items-center justify-center w-6 h-6 mr-2 rounded-full bg-blue-100 text-blue-800">2</span>
+                      <span>Run your node with the OTP to complete registration</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="inline-flex items-center justify-center w-6 h-6 mr-2 rounded-full bg-blue-100 text-blue-800">3</span>
+                      <span>Wait for verification to complete</span>
+                    </li>
+                  </ol>
+                </div>
+                
+                <div className="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={checkRegistrationStatus}
+                    disabled={isVerifying}
+                    className="aydo-button-secondary flex items-center"
+                  >
+                    {isVerifying ? (
+                      <>
+                        <span className="animate-spin mr-2">
+                          <FiRefreshCw className="h-4 w-4" />
+                        </span>
+                        Checking...
+                      </>
+                    ) : (
+                      <>
+                        <FiRefreshCw className="mr-2 h-4 w-4" />
+                        Check Status Now
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start">
+                  <FiInfo className="h-5 w-5 mr-3 mt-0.5 flex-shrink-0 text-red-500" />
+                  <span>{error}</span>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Step 7: Verification Complete - Show devices.yaml */}
+          {step === 7 && (
+            <div className="space-y-8">
+              <div className="flex items-center justify-center">
+                <div className="bg-green-50 w-16 h-16 rounded-full flex items-center justify-center">
+                  <FiCheckCircle className="w-8 h-8 text-green-500" />
+                </div>
+              </div>
+              
+              <h2 className="text-2xl font-bold text-center text-gray-900">Registration Complete!</h2>
+              <p className="text-center text-gray-600">
+                Your node has been successfully registered and verified with the network.
+              </p>
+              
+              {/* Devices YAML Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-3 text-blue-800">Devices Configuration</h3>
+                <p className="text-sm mb-4 text-blue-700">
+                  Your node has been registered with the network. You can now download the devices.yaml configuration.
+                </p>
+                
+                <div className="bg-white p-5 rounded-lg border border-blue-200">
+                  <pre className="whitespace-pre-wrap text-sm text-black font-mono overflow-auto max-h-64">
+                    {devicesYaml || "Loading devices configuration..."}
+                  </pre>
+                </div>
+                
+                <div className="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={downloadDevicesYaml}
+                    disabled={!devicesYaml}
+                    className="aydo-button flex items-center"
+                  >
+                    <FiDownload className="mr-2 h-4 w-4" />
+                    Download devices.yaml
+                  </button>
+                </div>
+              </div>
+              
+              {/* What's Next */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-3 text-black">Next Steps</h3>
+                <p className="text-sm text-black mb-4">
+                  Your node is now part of the network. Here's what you can do next:
+                </p>
+                
+                <ol className="text-sm space-y-3">
+                  <li className="flex items-start text-black">
+                    <span className="inline-flex items-center justify-center w-6 h-6 mr-2 rounded-full bg-gray-200 text-black-800">1</span>
+                    <span>Download and place the devices.yaml file in your node's config directory</span>
+                  </li>
+                  <li className="flex items-start text-black">
+                    <span className="inline-flex items-center justify-center w-6 h-6 mr-2 rounded-full bg-gray-200 text-black-800">2</span>
+                    <span>Restart your node to ensure it loads the latest configuration</span>
+                  </li>
+                  <li className="flex items-start text-black">
+                    <span className="inline-flex items-center justify-center w-6 h-6 mr-2 rounded-full bg-gray-200 text-black-800">3</span>
+                    <span>Monitor your node's performance in the dashboard</span>
+                  </li>
+                </ol>
               </div>
               
               <div className="flex justify-center mt-6">
                 <button
                   type="button"
                   onClick={goToPendingNodes}
-                  className="aydo-button flex items-center"
+                  className="aydo-button-secondary flex items-center mr-3"
                 >
                   View Pending Nodes
                   <FiArrowRight className="ml-2 h-4 w-4" />
                 </button>
+                
+                <Link href="/dashboard" className="aydo-button flex items-center">
+                  Go to Dashboard
+                  <FiArrowRight className="ml-2 h-4 w-4" />
+                </Link>
               </div>
             </div>
           )}
