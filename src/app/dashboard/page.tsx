@@ -194,7 +194,7 @@ export default function Dashboard() {
             </div>
           </Link>
           
-          <Link href="/nodes/pending" className="aydo-card card-hover border border-gray-100">
+          {/* <Link href="/nodes/pending" className="aydo-card card-hover border border-gray-100">
             <h3 className="font-semibold text-gray-800 mb-2">Pending Nodes</h3>
             <p className="text-sm text-gray-600">View nodes awaiting approval and check their status.</p>
             <div className="flex justify-end mt-4">
@@ -202,7 +202,7 @@ export default function Dashboard() {
                 <FiArrowRight className="h-4 w-4" />
               </div>
             </div>
-          </Link>
+          </Link> */}
           
           <Link href="/map" className="aydo-card card-hover border border-gray-100">
             <h3 className="font-semibold text-gray-800 mb-2">Network Map</h3>

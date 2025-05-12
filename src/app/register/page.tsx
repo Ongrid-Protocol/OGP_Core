@@ -51,8 +51,8 @@ export default function RegisterNodePage() {
     contract_address: DEFAULT_CONTRACT_ADDRESS,
     wallet_address: '',
     location: {
-      latitude: 0,
-      longitude: 0,
+      latitude: 6.5244,
+      longitude: 3.3792,
       altitude: 0,
       accuracy: 5.0,
       satellites: 8,
@@ -64,10 +64,10 @@ export default function RegisterNodePage() {
       }
     },
     specifications: {
-      max_wattage: '1200kWh',
+      max_wattage: 1200,
       voltage_range: '220V-240V',
-      frequency_range: '50Hz',
-      battery_capacity: '12kWh',
+      frequency_range: 50,
+      battery_capacity: 200,
       phase_type: 'single'
     }
   });
