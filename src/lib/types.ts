@@ -24,11 +24,14 @@ export interface NodeRegistrationData {
   node_name: string;
   node_creation_number: number;
   device_type: string;
-  contract_address: string;
   wallet_address: string;
   location: {
     latitude: number;
     longitude: number;
+    altitude: number;
+    accuracy: number;
+    satellites: number;
+    timestamp: number;
     country: {
       code: string;
       name: string;
@@ -36,7 +39,7 @@ export interface NodeRegistrationData {
     }
   };
   specifications: {
-    max_daily_wattage: string;
+    max_wattage: string;
     voltage_range: string;
     frequency_range: string;
     battery_capacity: string;

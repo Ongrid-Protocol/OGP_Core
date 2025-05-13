@@ -24,15 +24,11 @@ function getDeviceSetupInfo(nodeData: NodeRegistrationData): {
       setupType = 'generator';
     } else if (nodeData.id.startsWith('SC')) {
       setupType = 'consumer';
-    } else if (nodeData.id.startsWith('SGC')) {
-      setupType = 'generator-consumer';
     }
-  }
+  
   // If not clear from ID, try from device_type
-  else if (nodeData.device_type) {
-    if (nodeData.device_type.includes('consumer') && nodeData.device_type.includes('generator')) {
-      setupType = 'generator-consumer';
-    } else if (nodeData.device_type.includes('consumer')) {
+  } else if (nodeData.device_type) {
+    if (nodeData.device_type.includes('consumer')) {
       setupType = 'consumer';
     } else if (nodeData.device_type.includes('generator')) {
       setupType = 'generator';
@@ -51,10 +47,6 @@ function getDeviceSetupInfo(nodeData: NodeRegistrationData): {
       prefix = 'SC';
       typeName = 'Solar Consumer';
       break;
-    case 'generator-consumer':
-      prefix = 'SGC';
-      typeName = 'Solar Generator and Consumer';
-      break;
   }
   
   return { prefix, typeName, setupType };
@@ -65,13 +57,13 @@ function getDeviceSetupInfo(nodeData: NodeRegistrationData): {
  */
 function validateDeviceId(nodeData: NodeRegistrationData): string {
   // If the ID already follows our format, use it
-  const idPattern = /^(SG|SC|SGC)\d+[A-Z]{2}\d+$/;
+  const idPattern = /^(SG|SC)\d+[A-Z]{2}\d+$/;
   if (nodeData.id && idPattern.test(nodeData.id)) {
     return nodeData.id;
   }
 
   const { prefix } = getDeviceSetupInfo(nodeData);
-  const country = nodeData.location.country || 'KE';
+  const country = nodeData.location.country?.code || 'KE';
   
   // Get the existing devices to determine the next number
   let existingDevices: any[] = [];
@@ -106,8 +98,8 @@ function validateDeviceId(nodeData: NodeRegistrationData): string {
  */
 function generateDeviceName(nodeData: NodeRegistrationData, deviceId: string): string {
   // If the name is already provided, use it
-  if (nodeData.name && nodeData.name.trim() !== '') {
-    return nodeData.name;
+  if (nodeData.node_name && nodeData.node_name.trim() !== '') {
+    return nodeData.node_name;
   }
   
   const { typeName } = getDeviceSetupInfo(nodeData);
@@ -170,14 +162,14 @@ async function updateDevicesYaml(
       id: nodeId,
       name: nodeName,
       device_type: nodeData.device_type,
-      peerId: nodeData.peerId,
+      peerId: nodeData.peer_id,
       ip: icpData.ip,
-      port: nodeData.port,
+      port: 8080, // Default port
       location: {
-        latitude: icpData.location.latitude || nodeData.location.lat,
-        longitude: icpData.location.longitude || nodeData.location.lng,
-        country: nodeData.location.country || icpData.location.country || "Unknown",
-        region: nodeData.location.region || icpData.location.region || "Unknown",
+        latitude: icpData.location.latitude || nodeData.location.latitude,
+        longitude: icpData.location.longitude || nodeData.location.longitude,
+        country: nodeData.location.country?.code || icpData.location.country || "Unknown",
+        region: nodeData.location.country?.region || icpData.location.region || "Unknown",
       },
       specifications: {
         max_wattage: nodeData.specifications.max_wattage,
@@ -186,12 +178,8 @@ async function updateDevicesYaml(
         battery_capacity: nodeData.specifications.battery_capacity,
         phase_type: nodeData.specifications.phase_type
       },
-      sensors: nodeData.sensors.map(sensor => ({
-        sensor_type: sensor.sensor_type,
-        count: sensor.count
-      })),
       last_updated: new Date().toISOString(),
-      owner_wallet: nodeData.walletAddress,
+      owner_wallet: nodeData.wallet_address,
     };
     
     if (existingNodeIndex >= 0) {
@@ -232,7 +220,7 @@ export async function POST(request: NextRequest) {
     const nodeName = generateDeviceName(nodeData, nodeId);
     
     // 1. Fetch node info from ICP registry
-    const icpData = await fetchNodeInfoFromICP(nodeData.peerId);
+    const icpData = await fetchNodeInfoFromICP(nodeData.peer_id);
     
     // 2. Update devices.yaml
     const updated = await updateDevicesYaml(nodeId, nodeName, nodeData, icpData);

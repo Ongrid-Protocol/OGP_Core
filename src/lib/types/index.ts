@@ -1,10 +1,14 @@
 export type NodeStatus = 'active' | 'inactive' | 'warning';
 
-export type SolarSetupType = 'generator' | 'consumer' | 'generator-consumer';
+export type SolarSetupType = 'generator' | 'consumer';
 
 export type GeoLocation = {
   lat: number;
   lng: number;
+  altitude: number;
+  accuracy: number;
+  satellites: number;
+  timestamp: number;
 };
 
 export interface NodeData {
@@ -49,10 +53,7 @@ export interface NodeRegistrationData {
     battery_capacity: string;
     phase_type: 'single' | 'three';
   };
-  sensors: Array<{
-    sensor_type: string;
-    count: number;
-  }>;
+
 }
 
 export interface NodeFilterOptions {
