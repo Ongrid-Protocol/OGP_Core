@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "OGP Core - Node Management Dashboard",
-  description: "Open Grid Protocol - Register, monitor, and manage your OGP nodes",
+  description: "OnGrid Protocol - Register, monitor, and manage your OGP nodes",
 };
 
 export default function RootLayout({

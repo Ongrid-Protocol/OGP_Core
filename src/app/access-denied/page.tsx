@@ -69,7 +69,7 @@ export default function AccessDenied() {
       <footer className="container mx-auto py-6 px-4 border-t border-gray-200">
         <div className="flex justify-center">
           <div className="text-sm text-gray-500">
-            © {new Date().getFullYear()} Open Grid Protocol. All rights reserved.
+            © {new Date().getFullYear()} OnGrid Protocol. All rights reserved.
           </div>
         </div>
       </footer>

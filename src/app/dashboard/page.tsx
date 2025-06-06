@@ -59,7 +59,7 @@ export default function Dashboard() {
         <div className="aydo-card bg-gradient-radial from-primary/5 to-transparent border-0">
           <h1 className="aydo-title text-3xl">Welcome to OGP Core</h1>
           <p className="mt-2 text-gray-600">
-            Manage and monitor your Open Grid Protocol nodes from a single dashboard.
+            Manage and monitor OnGrid Protocol nodes from a single dashboard.
           </p>
           <div className="mt-4 text-xs bg-primary/10 text-primary p-2 rounded-md inline-block font-mono">
             {user?.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : 'Wallet connected'}

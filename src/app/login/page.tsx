@@ -52,7 +52,7 @@ export default function LoginPage() {
               </h1>
               <p className="mt-6 text-lg text-gray-600 leading-relaxed">
                 OGP Core provides a powerful dashboard to register, monitor, 
-                and manage your Open Grid Protocol nodes with ease.
+                and manage OnGrid Protocol nodes with ease.
               </p>
             </div>
 
@@ -129,7 +129,7 @@ export default function LoginPage() {
       <footer className="container mx-auto py-8 px-4 mt-16 border-t border-gray-200/50">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="text-sm text-gray-500">
-            © {new Date().getFullYear()} Open Grid Protocol. All rights reserved.
+            © {new Date().getFullYear()} OnGrid Protocol. All rights reserved.
           </div>
           
           <div className="flex space-x-6 mt-4 md:mt-0">
