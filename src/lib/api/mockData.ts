@@ -3,9 +3,7 @@ import { NodeData, DeviceCounters, CountryInfo } from '@/lib/types';
 
 // Wallet addresses for permissioned access (these would typically come from a database or API)
 export const authorizedWallets = [
-  '0xDdB24c1563620cB579BB112184B845d7b726E13f',
-  '0x2E49C49dCc22f3aF02Db21e2483A40f5a5c321dA',
-  '0x124EF9648A80fed282f94A5cdDe1B7045Df8622d',
+  '0xc9162F0268234D5C78c081af042af0a36eE81AEc',
   '0xaDdb303C89c84cDC484AF0fE4701f330ca01aFD6' // User's wallet address
 ];
 

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "start:otp-server": "node otp-server/otp-server.js"
   },
   "dependencies": {
     "@privy-io/react-auth": "^2.11.1",
